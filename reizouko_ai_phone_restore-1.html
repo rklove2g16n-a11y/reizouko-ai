@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>冷蔵庫AI スマホ版</title>
+<style>
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;margin:0;background:#f6f6f0;color:#222;padding-bottom:40px}
+header{padding:20px 16px;background:linear-gradient(135deg,#fff2c6,#dff5e1)}
+h1{margin:0;font-size:24px}.sub{font-size:14px;color:#555;margin-top:6px}
+main{padding:14px;max-width:760px;margin:auto}
+.card{background:#fff;border-radius:16px;padding:14px;margin-bottom:14px;box-shadow:0 5px 14px rgba(0,0,0,.06)}
+label{font-weight:800;display:block;margin:10px 0 6px}
+input,select{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:12px;padding:12px;font-size:16px;background:#fff}
+button{width:100%;border:0;border-radius:14px;padding:13px;font-size:16px;font-weight:800;background:#222;color:#fff;margin-top:10px}
+.btn2{background:#4b8f5a}.btn3{background:#b4602b}.gray{background:#777}.mini{width:auto;padding:8px 10px;margin:0;background:#ddd;color:#222;font-size:13px}
+.row{display:grid;grid-template-columns:1fr 120px;gap:8px}.row3{display:grid;grid-template-columns:1fr 90px 105px;gap:8px}
+.chipBox{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.chip{width:auto;margin:0;padding:9px 12px;border-radius:999px;background:#eef3ea;color:#222;font-size:14px}.on{background:#4b8f5a;color:#fff}
+.notice{background:#eef3ea;border-radius:12px;padding:10px;margin:10px 0;line-height:1.55;font-size:14px}
+.recipe{border:1px solid #eee;border-radius:14px;padding:13px;margin-top:12px}
+.recipe h3{margin:0 0 8px;font-size:18px}
+.tag{display:inline-block;background:#eef3ea;color:#2e6b3a;padding:4px 8px;border-radius:999px;font-size:12px;margin-right:4px;margin-bottom:4px}
+.orange{background:#ffe4d6;color:#9a3f13}.red{background:#ffecec;color:#b11}
+.item{border-bottom:1px solid #eee;padding:10px 0}.top{display:flex;justify-content:space-between;gap:8px;align-items:center}.mainText{font-weight:800}
+.small{font-size:13px;color:#666}.danger{color:#c0392b;font-weight:900}.near{color:#b4602b;font-weight:900}
+.editBox{background:#fafafa;border-radius:12px;padding:10px;margin-top:10px}
+ul,ol{padding-left:22px}
+</style>
+</head>
+<body>
+<header>
+<h1>冷蔵庫AI スマホ版</h1>
+<div class="sub">在庫から主役食材を選ぶ → 相性と満腹量を見て10候補</div>
+</header>
+
+<main>
+<div class="card">
+<label>今日の夕飯</label>
+<div class="row">
+<select id="people"><option value="1">1人</option><option value="2" selected>2人</option><option value="3">3人</option><option value="4">4人</option></select>
+<select id="carbMode"><option value="auto" selected>主食おまかせ</option><option value="rice">米</option><option value="pasta">パスタ</option><option value="udon">うどん</option><option value="soba">そば</option><option value="somen">そうめん</option><option value="none">おかずだけ</option></select>
+</div>
+<div class="notice">使いたい材料と量を入れてください。AIが在庫にある食材だけ追加して、10個の献立を出します。</div>
+<div id="baseRows"></div>
+<button class="btn2" onclick="addBaseRow()">使いたい材料を追加</button>
+<button class="btn3" onclick="makeMenus()">この材料で10候補出す</button>
+<div id="menuResult" class="small" style="margin-top:12px">例：ソーセージ10本、もやし6袋</div>
+</div>
+
+<div class="card">
+<label>満腹量設定</label>
+<div class="row"><input id="rice2" type="number" value="4" step="0.5"><input id="pasta2" type="number" value="600" step="50"></div>
+<div class="small">左：米2人分の合数 / 右：パスタ2人分のg</div>
+<div class="row" style="margin-top:8px"><input id="somen2" type="number" value="6" step="1"><input id="udon2" type="number" value="4" step="1"></div>
+<div class="small">左：そうめん2人分の束 / 右：うどん・そば2人分の玉</div>
+<button class="btn2" onclick="saveSettings()">保存</button>
+</div>
+
+<div class="card">
+<label>在庫追加</label>
+<div class="chipBox" id="foodChips"></div>
+<input id="foodName" placeholder="例：もやし、ソーセージ、パスタ">
+<div class="row3">
+<input id="foodQty" placeholder="数量">
+<select id="foodUnit"><option>個</option><option>本</option><option>袋</option><option>切れ</option><option>g</option><option>kg</option><option>合</option><option>束</option><option>玉</option><option>缶</option><option>丁</option><option>株</option></select>
+<input id="foodLimit" type="date">
+</div>
+<input id="unitGram" placeholder="1単位の重さg 例：もやし1袋200gなら200">
+<button class="btn2" onclick="addFood()">在庫に追加</button>
+<button class="gray" onclick="restoreOld()">前の在庫を復活</button>
+<div id="stockList" class="small" style="margin-top:12px"></div>
+</div>
+
+<div class="card">
+<label>調味料</label>
+<div class="chipBox" id="seasoningChips"></div>
+<input id="newSeasoning" placeholder="例：ラー油、めんつゆ、豆板醤">
+<button class="btn2" onclick="addSeasoning()">調味料を追加</button>
+</div>
+</main>
+
+<script>
+const foodMaster=["米","パスタ","そうめん","うどん","そば","ソーセージ","卵","鮭","鶏肉","豚肉","牛肉","ひき肉","ツナ缶","豆腐","納豆","もやし","えのき","ブロッコリー","ほうれん草","ニラ","長ネギ","ピーマン","玉ねぎ","じゃがいも","にんじん","きゅうり","キャベツ"];
+const defaultSeasons=["醤油","白だし","みりん","砂糖","酒","鶏ガラ","味の素","ごま油","マヨネーズ","ポッカレモン","オイスターソース","にんにく","しょうが","味噌","バター","カレールー","ナンプラー","豆板醤","ケチャップ","ソース","めんつゆ","塩こしょう"];
+let stock=JSON.parse(localStorage.getItem("phoneStock")||"[]");
+let seasons=JSON.parse(localStorage.getItem("phoneSeasons")||JSON.stringify(defaultSeasons.slice(0,14)));
+let allSeasons=JSON.parse(localStorage.getItem("phoneAllSeasons")||JSON.stringify(defaultSeasons));
+let settings=JSON.parse(localStorage.getItem("phoneSettings")||'{"rice2":4,"pasta2":600,"somen2":6,"udon2":4}');
+let baseCount=0, editIndex=null, currentMenus=[];
+
+function $(id){return document.getElementById(id)}
+function num(v){let x=parseFloat(String(v).replace(/[^\d.]/g,""));return isNaN(x)?0:x}
+function round(x){return Math.round(x*10)/10}
+function save(){
+ localStorage.setItem("phoneStock",JSON.stringify(stock));
+ localStorage.setItem("v41stock",JSON.stringify(stock));
+ localStorage.setItem("v4stock",JSON.stringify(stock));
+ localStorage.setItem("v3stock",JSON.stringify(stock));
+ localStorage.setItem("stockV2",JSON.stringify(stock));
+ localStorage.setItem("phoneSeasons",JSON.stringify(seasons));
+ localStorage.setItem("phoneAllSeasons",JSON.stringify(allSeasons));
+}
+function saveSettings(){settings={rice2:+$("rice2").value,pasta2:+$("pasta2").value,somen2:+$("somen2").value,udon2:+$("udon2").value};localStorage.setItem("phoneSettings",JSON.stringify(settings));alert("保存しました")}
+function loadSettings(){$("rice2").value=settings.rice2;$("pasta2").value=settings.pasta2;$("somen2").value=settings.somen2;$("udon2").value=settings.udon2}
+function hasSeason(x){return seasons.includes(x)}
+function hasStock(name){return stock.some(s=>name.includes(s.name)||s.name.includes(name))}
+function stockItem(name){return stock.find(s=>name.includes(s.name)||s.name.includes(name))}
+function stockNames(){return stock.map(s=>s.name).filter(Boolean)}
+function unitOf(f){if(f==="米")return"合";if(f==="パスタ")return"g";if(f==="そうめん")return"束";if(["うどん","そば"].includes(f))return"玉";if(["ソーセージ","きゅうり"].includes(f))return"本";if(["もやし","えのき","ほうれん草"].includes(f))return"袋";if(f==="豆腐")return"丁";if(f==="ブロッコリー")return"株";if(f==="鮭")return"切れ";if(f==="ツナ缶")return"缶";return"個"}
+function defaultAmount(f){if(f==="ソーセージ")return 4;if(f==="卵")return 2;if(f==="鮭")return 2;if(f==="ツナ缶")return 1;if(["鶏肉","豚肉","牛肉","ひき肉"].includes(f))return 250;if(f==="ピーマン")return 2;return 1}
+function useObj(f){let s=stockItem(f);return{name:f,amount:defaultAmount(f),unit:s?s.unit:unitOf(f)}}
+function carb(type){let p=+$("people").value,rate=p/2;if(type==="rice"&&hasStock("米"))return{name:"米",amount:+$("rice2").value*rate,unit:"合"};if(type==="pasta"&&hasStock("パスタ"))return{name:"パスタ",amount:+$("pasta2").value*rate,unit:"g"};if(type==="udon"&&hasStock("うどん"))return{name:"うどん",amount:+$("udon2").value*rate,unit:"玉"};if(type==="soba"&&hasStock("そば"))return{name:"そば",amount:+$("udon2").value*rate,unit:"玉"};if(type==="somen"&&hasStock("そうめん"))return{name:"そうめん",amount:+$("somen2").value*rate,unit:"束"};return null}
+function bestCarbs(){let m=$("carbMode").value;if(m==="none")return [null];if(m!=="auto")return [carb(m)].filter(Boolean);let a=[];["rice","pasta","udon","soba","somen"].forEach(t=>{let c=carb(t);if(c)a.push(c)});a.push(null);return a}
+
+function addBaseRow(name="",qty="",unit=""){
+ let id=baseCount++;
+ let div=document.createElement("div");div.className="row3";div.style.marginTop="8px";div.id="baseRow"+id;
+ let opts=["個","本","袋","切れ","g","kg","合","束","玉","缶","丁","株"].map(u=>`<option ${u===unit?"selected":""}>${u}</option>`).join("");
+ div.innerHTML=`<input id="bn${id}" placeholder="食材" value="${name}"><input id="bq${id}" placeholder="量" value="${qty}"><select id="bu${id}">${opts}</select><button class="gray" onclick="$('baseRow${id}').remove()">削除</button>`;
+ $("baseRows").appendChild(div);
+}
+function baseUses(){
+ let a=[];
+ for(let i=0;i<baseCount;i++){let n=$("bn"+i),q=$("bq"+i),u=$("bu"+i);if(n&&q&&u&&n.value.trim()&&q.value.trim())a.push({name:n.value.trim(),amount:num(q.value),unit:u.value})}
+ return a;
+}
+
+const pair={
+"ソーセージ":["もやし","えのき","卵","ピーマン","玉ねぎ","ブロッコリー","キャベツ"],
+"もやし":["ソーセージ","卵","豚肉","ニラ","えのき","ツナ缶"],
+"えのき":["ソーセージ","鮭","卵","豆腐","ほうれん草","豚肉"],
+"卵":["ソーセージ","もやし","えのき","納豆","ツナ缶","ニラ"],
+"ツナ缶":["マヨネーズ","きゅうり","卵","パスタ","米"],
+"納豆":["卵","米","長ネギ","豆腐"],
+"鮭":["えのき","ブロッコリー","ほうれん草","米","パスタ"]
+};
+const styles=[
+{name:"中華炒め",need:["鶏ガラ","醤油"],season:["鶏ガラ 小さじ1","醤油 小さじ1"],good:["もやし","ニラ","卵","豚肉","ソーセージ"],step:"鶏ガラと醤油で中華風に仕上げる。"},
+{name:"ごま油中華",need:["鶏ガラ","醤油","ごま油"],season:["鶏ガラ 小さじ1","醤油 小さじ1","ごま油 小さじ1"],good:["もやし","ニラ","卵"],step:"仕上げにごま油を入れて香りを出す。"},
+{name:"バター醤油",need:["バター","醤油"],season:["バター 15g","醤油 大さじ1"],good:["えのき","ソーセージ","鮭","ブロッコリー"],step:"バターと醤油を絡める。"},
+{name:"にんにく醤油",need:["醤油","にんにく"],season:["醤油 大さじ1","にんにく 少し"],good:["ソーセージ","豚肉","鶏肉","もやし"],step:"にんにくを効かせて醤油で味付けする。"},
+{name:"白だし和風",need:["白だし","醤油"],season:["白だし 大さじ1","醤油 小さじ1"],good:["えのき","卵","豆腐","鮭"],step:"白だしと醤油で和風にまとめる。"},
+{name:"マヨ醤油",need:["マヨネーズ","醤油"],season:["マヨネーズ 大さじ1","醤油 小さじ1"],good:["ツナ缶","ソーセージ","ブロッコリー","卵"],step:"マヨネーズと醤油でこってり味にする。"},
+{name:"ケチャップ",need:["ケチャップ"],season:["ケチャップ 大さじ2"],good:["ソーセージ","卵","ピーマン","玉ねぎ"],step:"ケチャップで洋風に炒める。"},
+{name:"めんつゆ",need:["めんつゆ"],season:["めんつゆ 大さじ2"],good:["卵","えのき","豆腐","そば","うどん"],step:"めんつゆで簡単に味付けする。"}
+];
+function okStyle(s){return s.need.every(hasSeason)}
+function scoreMenu(base,extra,style,carbObj,side){
+ let names=[...base,...extra].map(x=>x.name);let sc=0;
+ for(let i=0;i<names.length;i++){for(let j=i+1;j<names.length;j++){if((pair[names[i]]||[]).includes(names[j])||(pair[names[j]]||[]).includes(names[i]))sc+=40;else sc+=4}}
+ names.forEach(n=>{if(style.good.includes(n))sc+=25});
+ if(carbObj)sc+=80;if(side)sc+=30;
+ return sc;
+}
+function sideOptions(baseNames){
+ let a=[];
+ if(hasStock("もやし")&&!baseNames.includes("もやし")&&["鶏ガラ","ごま油","醤油"].every(hasSeason))a.push({name:"もやしナムル",items:[useObj("もやし")],season:["鶏ガラ 小さじ1","ごま油 小さじ1","醤油 小さじ1"],step:"もやしを加熱して水気を切り、調味料で和える。"});
+ if(hasStock("ツナ缶")&&!baseNames.includes("ツナ缶")&&["マヨネーズ","醤油"].every(hasSeason))a.push({name:"ツナマヨ小鉢",items:[useObj("ツナ缶")],season:["マヨネーズ 大さじ1","醤油 小さじ1"],step:"ツナをマヨ醤油で和える。"});
+ if(hasStock("えのき")&&!baseNames.includes("えのき")&&["バター","醤油"].every(hasSeason))a.push({name:"えのきバター醤油",items:[useObj("えのき")],season:["バター 10g","醤油 小さじ1"],step:"えのきを炒めてバター醤油で味付けする。"});
+ if(hasStock("納豆")&&!baseNames.includes("納豆")&&hasSeason("醤油"))a.push({name:"納豆小鉢",items:[useObj("納豆")],season:["醤油 小さじ1"],step:"納豆に醤油を混ぜる。"});
+ return a;
+}
+function makeMenus(){
+ let base=baseUses();
+ if(!base.length){$("menuResult").innerHTML="使いたい材料を入れてください。";return}
+ let missing=base.filter(x=>!hasStock(x.name));
+ if(missing.length){$("menuResult").innerHTML="在庫にない食材があります："+missing.map(x=>x.name).join("・");return}
+ let baseNames=base.map(x=>x.name);
+ let extras=stockNames().filter(x=>!baseNames.some(b=>x.includes(b)||b.includes(x))&&!["米","パスタ","うどん","そば","そうめん"].includes(x)).map(useObj);
+ let extraSets=[[]]; extras.forEach(x=>extraSets.push([x])); for(let i=0;i<extras.length;i++)for(let j=i+1;j<extras.length;j++)extraSets.push([extras[i],extras[j]]);
+ let sides=sideOptions(baseNames); let carbs=bestCarbs(); let out=[];
+ extraSets.forEach(ex=>carbs.forEach(c=>styles.filter(okStyle).forEach(st=>{
+   let sidePick=sides.length&&Math.random()<0.45?sides[out.length%sides.length]:null;
+   let name=[...base,...ex].map(x=>x.name).slice(0,3).join("・");
+   let title=(c?c.name+"＋":"")+name+"の"+st.name+(sidePick?"＋"+sidePick.name:"");
+   out.push({title,base,extra:ex,carb:c,style:st,side:sidePick,score:scoreMenu(base,ex,st,c,sidePick)});
+ })));
+ out.sort((a,b)=>b.score-a.score);
+ currentMenus=out.slice(0,10);
+ $("menuResult").innerHTML='<div class="notice">相性・満腹量・在庫だけで10候補出しました。</div>'+currentMenus.map(renderMenu).join("");
+}
+function renderMenu(m,i){
+ let mats=[...(m.carb?[m.carb]:[]),...m.base,...m.extra,...(m.side?m.side.items:[])];
+ return `<div class="recipe"><h3>${i+1}. ${m.title}</h3><div><span class="tag">在庫だけ</span><span class="tag">相性考慮</span><span class="tag orange">点数 ${Math.round(m.score)}</span></div><p><b>材料</b></p><ul>${mats.map(x=>`<li>${x.name} ${round(x.amount)}${x.unit}</li>`).join("")}</ul><p><b>調味料</b></p><ul>${m.style.season.map(s=>`<li>${s}</li>`).join("")}${m.side?m.side.season.map(s=>`<li>${m.side.name}：${s}</li>`).join(""):""}</ul><p><b>作り方</b></p><ol>${steps(m).map(s=>`<li>${s}</li>`).join("")}</ol><button class="btn2" onclick="adjust(${i})">量を変えて再計算</button><div id="adj${i}"></div></div>`;
+}
+function steps(m){
+ let s=[]; if(m.carb&&m.carb.name==="パスタ")s.push(`パスタ${round(m.carb.amount)}${m.carb.unit}を茹でる。`); if(m.carb&&["うどん","そば","そうめん"].includes(m.carb.name))s.push(`${m.carb.name}${round(m.carb.amount)}${m.carb.unit}を用意する。`); if(m.carb&&m.carb.name==="米")s.push(`米${round(m.carb.amount)}${m.carb.unit}を用意する。`);
+ s.push([...m.base,...m.extra].map(x=>x.name).join("・")+"を食べやすく切る。"); s.push("火が通りにくいものから炒める。"); if(m.carb&&m.carb.name!=="米")s.push(`${m.carb.name}を加えて合わせる。`); s.push(m.style.step); if(m.carb&&m.carb.name==="米")s.push("ご飯にのせる、または炒め合わせる。"); if(m.side)s.push("追加の1品："+m.side.step); return s;
+}
+function adjust(i){
+ let m=currentMenus[i], mats=[...(m.carb?[m.carb]:[]),...m.base,...m.extra,...(m.side?m.side.items:[])]; let h='<div class="editBox"><b>量を変更</b>'; mats.forEach((x,j)=>h+=`<label>${x.name}（${x.unit}）</label><input id="ad${i}_${j}" value="${round(x.amount)}">`); h+=`<button class="btn2" onclick="recalc(${i})">再計算</button><div id="re${i}"></div></div>`; $("adj"+i).innerHTML=h;
+}
+function recalc(i){
+ let m=currentMenus[i], mats=[...(m.carb?[m.carb]:[]),...m.base,...m.extra,...(m.side?m.side.items:[])]; let rate=1,html=""; mats.forEach((x,j)=>{let v=num($("ad"+i+"_"+j).value);if(x.amount>0)rate=Math.max(rate,v/x.amount);html+=`<li>${x.name} ${v}${x.unit}</li>`}); let seas=m.style.season.map(s=>s.replace(/(\d+(\.\d+)?)/g,a=>round(parseFloat(a)*rate))); $("re"+i).innerHTML=`<div class="notice">調味料を約${round(rate)}倍にしました。</div><ul>${html}</ul><p><b>調味料</b></p><ul>${seas.map(s=>`<li>${s}</li>`).join("")}</ul>`;
+}
+
+function renderFoodChips(){$("foodChips").innerHTML=foodMaster.map(f=>`<button class="chip" onclick="quickFood('${f}')">${f}</button>`).join("")}
+function quickFood(f){stock.push({name:f,qty:"1",unit:unitOf(f),unitGram:"",limit:$("foodLimit").value});save();renderStock()}
+function addFood(){let arr=$("foodName").value.trim().replace(/[、，,\s]/g," ").split(" ").filter(Boolean);arr.forEach(name=>stock.push({name,qty:$("foodQty").value||"1",unit:$("foodUnit").value,unitGram:$("unitGram").value||"",limit:$("foodLimit").value}));$("foodName").value="";$("foodQty").value="";$("unitGram").value="";$("foodLimit").value="";save();renderStock()}
+function displayStock(s){let extra=s.unitGram?`（1${s.unit}${s.unitGram}g / 合計${round(num(s.qty)*num(s.unitGram))}g）`:"";return `${s.name} / ${s.qty}${s.unit}${extra}`}
+function renderStock(){if(!stock.length){$("stockList").innerHTML="在庫はまだありません。";return}$("stockList").innerHTML=stock.map((s,i)=>({...s,i})).map(s=>`<div class="item"><div class="top"><div><div class="mainText">${displayStock(s)}</div></div><div style="display:flex;gap:6px"><button class="mini" onclick="editIndex=${s.i};renderStock()">編集</button><button class="mini" onclick="stock.splice(${s.i},1);save();renderStock()">削除</button></div></div>${editIndex===s.i?editHtml(s):""}</div>`).join("")}
+function editHtml(s){return`<div class="editBox"><input id="en${s.i}" value="${s.name}"><div class="row3"><input id="eq${s.i}" value="${s.qty}"><select id="eu${s.i}">${["個","本","袋","切れ","g","kg","合","束","玉","缶","丁","株"].map(u=>`<option ${u===s.unit?"selected":""}>${u}</option>`).join("")}</select><input id="eg${s.i}" value="${s.unitGram||""}" placeholder="1単位g"></div><button class="btn2" onclick="saveEdit(${s.i})">保存</button><button class="gray" onclick="editIndex=null;renderStock()">キャンセル</button></div>`}
+function saveEdit(i){stock[i]={...stock[i],name:$("en"+i).value,qty:$("eq"+i).value,unit:$("eu"+i).value,unitGram:$("eg"+i).value};editIndex=null;save();renderStock()}
+function renderSeasons(){$("seasoningChips").innerHTML=allSeasons.map(s=>`<button class="chip ${hasSeason(s)?'on':''}" onclick="toggleSeason('${s}')">${hasSeason(s)?"✓ ":""}${s}</button>`).join("")}
+function toggleSeason(s){seasons=hasSeason(s)?seasons.filter(x=>x!==s):[...seasons,s];save();renderSeasons()}
+function addSeasoning(){let arr=$("newSeasoning").value.trim().replace(/[、，,\s]/g," ").split(" ").filter(Boolean);arr.forEach(s=>{if(!allSeasons.includes(s))allSeasons.push(s);if(!seasons.includes(s))seasons.push(s)});$("newSeasoning").value="";save();renderSeasons()}
+function normalizeStockItem(x){
+ return {
+   name:x.name||x.food||x.item||x.ingredient||"",
+   qty:String(x.qty||x.quantity||x.amount||"1"),
+   unit:x.unit||"個",
+   unitGram:x.unitGram||x.gram||x.weight||"",
+   limit:x.limit||x.expiry||x.date||x.expiration||""
+ };
+}
+function mergeStockData(data){
+ let added=0;
+ if(!Array.isArray(data))return 0;
+ data.map(normalizeStockItem).filter(x=>x.name).forEach(x=>{
+   const exists=stock.some(s=>s.name===x.name&&s.qty===x.qty&&s.unit===x.unit&&s.limit===x.limit);
+   if(!exists){stock.push(x);added++;}
+ });
+ return added;
+}
+function restoreOld(){
+ const keys=["phoneStock","v41stock","v4stock","v3stock","v2stock","stockV2","stock","ingredients","foods","refrigeratorStock","shoppingStock","inventory"];
+ let added=0;
+ keys.forEach(k=>{
+   const raw=localStorage.getItem(k);
+   if(!raw)return;
+   try{added+=mergeStockData(JSON.parse(raw));}catch(e){}
+ });
+ save();
+ renderStock();
+ if(added>0)alert("在庫を復活しました：" + added + "件");
+ else alert("この画面から見える前の在庫は見つかりませんでした。同じHTMLファイル名で開いていた在庫は復活できます。");
+}
+function restoreOldSilent(){
+ const keys=["phoneStock","v41stock","v4stock","v3stock","v2stock","stockV2","stock","ingredients","foods","refrigeratorStock","shoppingStock","inventory"];
+ let changed=false;
+ keys.forEach(k=>{
+   const raw=localStorage.getItem(k);
+   if(!raw)return;
+   try{
+     const before=stock.length;
+     mergeStockData(JSON.parse(raw));
+     if(stock.length>before)changed=true;
+   }catch(e){}
+ });
+ if(changed)save();
+}
+function init(){restoreOldSilent();loadSettings();renderFoodChips();renderStock();renderSeasons();addBaseRow()}
+init();
+</script>
+</body>
+</html>
